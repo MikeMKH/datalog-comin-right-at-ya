@@ -1,0 +1,157 @@
+
+// ============================================
+// logic gates
+// ============================================
+
+.decl xor_gate(a:number, b:number, result:number)
+xor_gate(0, 0, 0).
+xor_gate(0, 1, 1).
+xor_gate(1, 0, 1).
+xor_gate(1, 1, 0).
+
+.decl and_gate(a:number, b:number, result:number)
+and_gate(0, 0, 0).
+and_gate(0, 1, 0).
+and_gate(1, 0, 0).
+and_gate(1, 1, 1).
+
+.decl or_gate(a:number, b:number, result:number)
+or_gate(0, 0, 0).
+or_gate(0, 1, 1).
+or_gate(1, 0, 1).
+or_gate(1, 1, 1).
+
+
+// ============================================
+// all possible input combinations
+// ============================================
+
+.decl input_bits(a:number, b:number, cin:number)
+
+input_bits(0, 0, 0).
+input_bits(0, 0, 1).
+input_bits(0, 1, 0).
+input_bits(0, 1, 1).
+input_bits(1, 0, 0).
+input_bits(1, 0, 1).
+input_bits(1, 1, 0).
+input_bits(1, 1, 1).
+
+
+// ============================================
+// full adder implementation
+// ============================================
+
+// half adder: A XOR B
+.decl partial_sum(a:number, b:number, p:number)
+
+partial_sum(a, b, p) :-
+    input_bits(a, b, _),
+    xor_gate(a, b, p).
+
+// sum: (A XOR B) XOR Cin
+.decl sum_bit(a:number, b:number, cin:number, s:number)
+
+sum_bit(a, b, cin, s) :-
+    input_bits(a, b, cin),
+    partial_sum(a, b, p),
+    xor_gate(p, cin, s).
+
+// carry-out: (A AND B) OR (Cin AND (A XOR B))
+
+.decl carry_bit(a:number, b:number, cin:number, co:number)
+
+carry_bit(a, b, cin, co) :-
+    input_bits(a, b, cin),
+    partial_sum(a, b, p),
+    and_gate(a, b, g1),
+    and_gate(cin, p, g2),
+    or_gate(g1, g2, co).
+
+// combine outputs
+.decl result(
+    a:number,
+    b:number,
+    cin:number,
+    s:number,
+    cout:number
+)
+
+result(a, b, cin, s, co) :-
+    sum_bit(a, b, cin, s),
+    carry_bit(a, b, cin, co).
+
+
+// ============================================
+// expected results
+// ============================================
+
+.decl expected(
+    a:number,
+    b:number,
+    cin:number,
+    s:number,
+    cout:number
+)
+
+expected(0, 0, 0, 0, 0).
+expected(0, 0, 1, 1, 0).
+expected(0, 1, 0, 1, 0).
+expected(0, 1, 1, 0, 1).
+expected(1, 0, 0, 1, 0).
+expected(1, 0, 1, 0, 1).
+expected(1, 1, 0, 0, 1).
+expected(1, 1, 1, 1, 1).
+
+
+// ============================================
+// verification
+// ============================================
+
+// result exists, but is not expected.
+.decl incorrect(
+    a:number,
+    b:number,
+    cin:number,
+    s:number,
+    cout:number
+)
+
+incorrect(a, b, cin, s, co) :-
+    result(a, b, cin, s, co),
+    !expected(a, b, cin, s, co).
+
+// expected result was never derived.
+.decl missing(
+    a:number,
+    b:number,
+    cin:number,
+    s:number,
+    cout:number
+)
+
+missing(a, b, cin, s, co) :-
+    expected(a, b, cin, s, co),
+    !result(a, b, cin, s, co).
+
+
+// ============================================
+// output
+// ============================================
+
+.output result
+.output incorrect
+.output missing
+
+// ============================================
+// result.csv
+// ============================================
+
+// 0	0	0	0	0
+// 0	0	1	1	0
+// 0	1	0	1	0
+// 0	1	1	0	1
+// 1	0	0	1	0
+// 1	0	1	0	1
+// 1	1	0	0	1
+// 1	1	1	1	1
