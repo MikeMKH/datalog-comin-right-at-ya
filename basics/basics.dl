@@ -1,0 +1,76 @@
+// examples from https://www.philipzucker.com/datalog-book/basics.html
+
+// ============================================
+// Facts
+// ============================================
+
+.decl mytable(x : symbol, y : number, z : unsigned, w : float)
+// tables in Souffle datalog have set semantics
+mytable("42", -42, 42, 42.1).
+mytable("42", -42, 42, 42.1). // duplicate rows are coalesced
+mytable("Hi", -47, 7331, 11.1).
+.output mytable(IO=stdout)
+
+// mytable
+// ===============
+// 42      -42     42      42.100000000000001
+// Hi      -47     7331    11.1
+// ===============
+
+// need to explicitly specify output for tables to be printed
+.decl this_table_wont_print(x : symbol)
+this_table_wont_print("hidden").
+
+.decl nor_will_this_table_wont_print(x : symbol)
+nor_will_this_table_wont_print("hidden").
+
+// ============================================
+// Rules
+// ============================================
+
+.decl foo(x : symbol, y : symbol)
+foo("a","a").
+foo("b","a").
+
+.decl myquery(x : symbol)
+// SELECT foo.x FROM foo WHERE foo.x = foo.y
+myquery(x) :- foo(x,x). 
+.output myquery(IO=stdout)
+
+// myquery
+// ===============
+// a
+// ===============
+
+.decl myquery2(x : symbol)
+// SELECT foo.x FROM foo WHERE foo.x != foo.y
+myquery2(x) :- foo(x,y), x != y.
+.output myquery2(IO=stdout)
+
+// myquery2
+// ===============
+// b
+// ===============
+
+// ============================================
+// Recursion
+// ============================================
+
+.decl step(x:number)
+step(0).
+step(x) :- step(y), x = y + 1, x < 10.
+.output step(IO=stdout)
+
+// step
+// ===============
+// 0
+// 1
+// 2
+// 3
+// 4
+// 5
+// 6
+// 7
+// 8
+// 9
+// ===============
