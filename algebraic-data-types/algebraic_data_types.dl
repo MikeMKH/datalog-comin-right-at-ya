@@ -1,0 +1,101 @@
+//============================================
+// Collections
+//============================================
+
+.type IntList = Nil {} | Cons {hd : number, tl : IntList}
+.type BinTree = Empty {} | Leaf {n : number} | Node {left : BinTree, right : BinTree}
+
+.decl list(l : IntList)
+list(tl) :- list($Cons(_hd,tl)).
+.decl bintree(b : BinTree)
+bintree(left), bintree(right) :- bintree($Node(left,right)).
+
+.decl length(l : IntList, n : unsigned)
+length($Nil(), 0).
+length(l, n + 1) :- list(l), l = $Cons(_hd,tl), length(tl, n).
+
+list($Cons(3,$Cons(2,$Cons(1,$Nil())))).
+.output length(IO=stdout)
+
+// length
+// ===============
+// $Nil    0
+// $Cons(1, $Nil)  1
+// $Cons(2, $Cons(1, $Nil))        2
+// $Cons(3, $Cons(2, $Cons(1, $Nil)))      3
+// ===============
+
+
+//============================================
+// Peano Numbers
+//============================================
+
+.type Nat = Succ {prev : Nat} | Zero {}
+
+.decl nats(n : Nat)
+nats($Zero()).
+nats($Succ(n)) :- nats(n).
+.limitsize nats(n=10)
+.output nats(IO=stdout)
+
+// nats
+// ===============
+// $Zero
+// $Succ($Zero)
+// $Succ($Succ($Zero))
+// $Succ($Succ($Succ($Zero)))
+// $Succ($Succ($Succ($Succ($Zero))))
+// $Succ($Succ($Succ($Succ($Succ($Zero)))))
+// $Succ($Succ($Succ($Succ($Succ($Succ($Zero))))))
+// $Succ($Succ($Succ($Succ($Succ($Succ($Succ($Zero)))))))
+// $Succ($Succ($Succ($Succ($Succ($Succ($Succ($Succ($Zero))))))))
+// $Succ($Succ($Succ($Succ($Succ($Succ($Succ($Succ($Succ($Zero)))))))))
+// ===============
+
+// bridge between numbers and Nats (bounded so it terminates)
+.decl nat_of(n : number, v : Nat)
+nat_of(0, $Zero()).
+nat_of(n + 1, $Succ(v)) :- nat_of(n, v), n < 10.
+
+// query: 2 + 3
+.decl goal(x : Nat, y : Nat)
+goal(x, y) :- nat_of(2, x), nat_of(3, y).
+
+// sub-goals: peel one Succ off x at a time
+.decl need(x : Nat, y : Nat)
+need(x, y) :- goal(x, y).
+need(p, y) :- need($Succ(p), y).
+
+// add, computed only for needed sub-goals
+.decl add(x : Nat, y : Nat, z : Nat)
+add($Zero(), y, y)         :- need($Zero(), y).
+add($Succ(p), y, $Succ(z)) :- need($Succ(p), y), add(p, y, z).
+
+// answer: Nat
+.decl answer_nat(z : Nat)
+answer_nat(z) :- goal(x, y), add(x, y, z).
+
+// answer: number
+.decl answer_num(k : number)
+answer_num(k) :- answer_nat(z), nat_of(k, z).
+
+.output add(IO=stdout)
+.output answer_nat(IO=stdout)
+.output answer_num(IO=stdout)
+
+// add
+// ===============
+// $Zero   $Succ($Succ($Succ($Zero)))      $Succ($Succ($Succ($Zero)))
+// $Succ($Zero)    $Succ($Succ($Succ($Zero)))      $Succ($Succ($Succ($Succ($Zero))))
+// $Succ($Succ($Zero))     $Succ($Succ($Succ($Zero)))      $Succ($Succ($Succ($Succ($Succ($Zero)))))
+// ===============
+
+// answer_nat
+// ===============
+// $Succ($Succ($Succ($Succ($Succ($Zero)))))
+// ===============
+
+// answer_num
+// ===============
+// 5
+// ===============
