@@ -1,0 +1,26 @@
+// note: variables do nothing in this example
+.type AExpr = Add {x : AExpr, y : AExpr} | Lit {n : number} | Var {v : symbol}
+
+.decl aexpr(e : AExpr)
+aexpr(x), aexpr(y) :- aexpr($Add(x,y)).
+
+.decl eval(e : AExpr, v : number)
+eval(e, vx + vy) :- aexpr(e), e = $Add(x,y), eval(x,vx), eval(y,vy).
+eval(e, n) :- aexpr(e), e = $Lit(n).
+
+.decl simplify(orig : AExpr, simp : AExpr)
+simplify(e,$Lit(v)) :- eval(e, v).
+simplify(e,e) :- aexpr(e), !eval(e, _), e = $Var(x).
+simplify(e,$Add(x1,y1)) :- aexpr(e), !eval(e, _), e = $Add(x,y), simplify(x,x1), simplify(y,y1).
+
+aexpr($Add($Add($Lit(1), $Lit(2)), $Var("x"))).
+.output simplify(IO=stdout)
+
+// simplify
+// ===============
+// $Lit(1) $Lit(1)
+// $Lit(2) $Lit(2)
+// $Add($Lit(1), $Lit(2))  $Lit(3)
+// $Var(x) $Var(x)
+// $Add($Add($Lit(1), $Lit(2)), $Var(x))   $Add($Lit(3), $Var(x))
+// ===============
