@@ -1,0 +1,22 @@
+.decl edge(x:symbol, y:symbol, w:number)
+edge("a","b",10).
+edge("b","c",11).
+edge("a","c",42).
+// will create a cycle in the graph, which will cause the program to run forever
+// edge("c","a",1).
+
+.decl path(x:symbol, y:symbol, c:number)
+path(x,y,c)     :- edge(x,y,c).
+path(x,z,c1+c2) :- edge(x,y,c1), path(y,z,c2).
+
+.decl shortest(x:symbol, y:symbol, c:number)
+shortest(x,y,m) :- path(x,y,_), m = min c : { path(x,y,c) }.
+
+.output shortest(IO=stdout)
+
+// shortest
+// ===============
+// a       b       10
+// a       c       21
+// b       c       11
+// ===============

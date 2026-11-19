@@ -1,0 +1,69 @@
+//   ┌──── 10 ────▶ ( b ) ──── 11 ────┐
+//   │                                ▼
+// ( a ) ◀────────── 1 ──────────── ( c )
+//   │                                ▲
+//   └────────────── 42 ──────────────┘
+
+.decl edge(x:symbol, y:symbol, w:number)
+edge("a","b",10).
+edge("b","c",11).
+edge("a","c",42).
+edge("c","a",1).
+
+.decl path(x:symbol, y:symbol, c:number)
+path(x,y,c)     :- edge(x,y,c).
+path(x,z,c1+c2) :- edge(x,y,c1), path(y,z,c2).
+
+// drop a path if a cheaper-or-equal one to the same endpoints exists
+path(x,y,c1) <= path(x,y,c2) :- c2 <= c1.
+
+// a→a 22, a→b 10, a→c 21, b→a 12, b→b 22, b→c 11, c→a 1, c→b 11, c→c 22
+.output path(IO=stdout)
+
+// path
+// ===============
+// a       a       22
+// a       b       10
+// a       c       21
+// b       a       12
+// b       b       22
+// b       c       11
+// c       a       1
+// c       b       11
+// c       c       22
+// ===============
+
+.decl upper(label:symbol, v:number)
+
+upper("x", 1).
+upper("x", 7).
+upper("x", 3).
+upper("y", 4).
+upper("z", 9).
+upper("z", 9).   // duplicate fact
+
+upper(l, v1) <= upper(l, v2) :- v1 <= v2.
+
+.output upper(IO=stdout)
+
+// upper
+// ===============
+// x       7
+// y       4
+// z       9
+// ===============
+
+.type optionsymbol = None {} | Some {val : symbol}
+.decl A(v : optionsymbol)
+A($Some("foo")).
+A($Some("fiz")).
+A($None()) :- A(x), A(y), x != y.
+A(x) <= A($None()) :- A($None()).
+.output A(IO=stdout)   // only $None() remains
+
+// A
+// ===============
+// $Some(foo)
+// $Some(fiz)
+// $None
+// ===============
