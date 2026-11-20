@@ -1,16 +1,36 @@
-.decl acc(pc : number, v : number)
-.decl i(pc : number, v : number)
-.decl sumn(pc : number, i : number, acc : number) inline
+// Factored state: acc = 0; for (i = 0; i < 10; i++) acc += i;
+//
+//   pc1 ──▶ pc2 ──[i<10]──▶ pc3 ──[acc+=i]──▶ pc4
+//            ▲                                  │
+//            └────────────[i++]─────────────────┘
+//
+// Exact:    sumn(pc, i, acc)          one relation, whole states
+// Factored: accv(pc, a), ival(pc, i)  one relation per variable
+//           rejoined on pc, which pairs EVERY i with EVERY acc at that pc.
+//
+//   real states at pc4:  (i,acc) = (0,0) (1,1)
+//   rebuilt by join:              (0,0) (0,1) (1,0) (1,1)   <- 2 spurious
+//
+// Sound (no real state is lost) but imprecise. i stays within 0..10, but
+// acc is no longer tied to i's progress, so it grows forever.
+// .limitsize cuts it off.
 
-sumn(pc,i,acc) :- acc(pc,acc), i(pc,i).
-acc(1,0). i(1,0).
-acc(2,acc),i(2,i) :- sumn(1,i,acc).
-acc(3,acc),i(3,i) :- sumn(2,i,acc), i < 10.
-acc(4,acc+1),i(4,i) :- sumn(3,i,acc).
-acc(2,acc),i(2,i+1) :- sumn(4,i,acc).
+.decl accv(pc:number, v:number)
+.decl ival(pc:number, v:number)
 
-.limitsize acc(n=20)
-.output acc(IO=stdout)
+// rebuild states by joining the columns on pc
+.decl sumn(pc:number, i:number, a:number) inline
+sumn(pc, i, a) :- accv(pc, a), ival(pc, i).
+
+accv(1,0). ival(1,0).
+
+accv(2,a),   ival(2,i)   :- sumn(1,i,a).         // L1 -> L2
+accv(3,a),   ival(3,i)   :- sumn(2,i,a), i < 10. // loop guard
+accv(4,a+i), ival(4,i)   :- sumn(3,i,a).         // acc += i
+accv(2,a),   ival(2,i+1) :- sumn(4,i,a).         // i++
+
+.limitsize accv(n=20)
+.output accv(IO=stdout)
 
 // acc
 // ===============
