@@ -1,0 +1,27 @@
+.pragma "provenance" "explain"
+.decl reach(big : unsigned, small : unsigned)
+reach(0,0).
+// move water small to big
+reach(big + small, 0) :- reach(big,small), big + small <= 5.
+reach(5,  small - (5 - big)) :- reach(big,small), !big + small <= 5.
+// move water big to small
+reach(0, big + small) :- reach(big,small), big + small <= 3.
+reach(big  - (3 - small),  3) :- reach(big,small), !big + small <= 3.
+// empty big
+reach(0, small) :- reach(_,small).
+// empty small
+reach(big,0) :- reach(big,_).
+// fill big
+reach(5, small) :- reach(_,small).
+// fill small
+reach(big,3) :- reach(big,_).
+
+.decl big_is_4(small : unsigned)
+big_is_4(small) :- reach(4,small).
+.output big_is_4(IO=stdout)
+
+// big_is_4
+// ===============
+// 0
+// 3
+// ===============

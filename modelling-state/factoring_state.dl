@@ -1,0 +1,37 @@
+.decl acc(pc : number, v : number)
+.decl i(pc : number, v : number)
+.decl sumn(pc : number, i : number, acc : number) inline
+
+sumn(pc,i,acc) :- acc(pc,acc), i(pc,i).
+acc(1,0). i(1,0).
+acc(2,acc),i(2,i) :- sumn(1,i,acc).
+acc(3,acc),i(3,i) :- sumn(2,i,acc), i < 10.
+acc(4,acc+1),i(4,i) :- sumn(3,i,acc).
+acc(2,acc),i(2,i+1) :- sumn(4,i,acc).
+
+.limitsize acc(n=20)
+.output acc(IO=stdout)
+
+// acc
+// ===============
+// 1       0
+// 2       0
+// 2       1
+// 2       2
+// 2       3
+// 2       4
+// 2       5
+// 2       6
+// 3       0
+// 3       1
+// 3       2
+// 3       3
+// 3       4
+// 3       5
+// 4       1
+// 4       2
+// 4       3
+// 4       4
+// 4       5
+// 4       6
+// ===============
