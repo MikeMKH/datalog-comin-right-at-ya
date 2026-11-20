@@ -1,3 +1,23 @@
+// Die Hard 3: measure exactly 4 gallons with a 5-gal and a 3-gal jug.
+//
+// State = (big, small), the gallons in each jug. reach(big, small) holds
+// every state that can be reached, and each rule is one legal move:
+// fill a jug, empty a jug, or pour one jug into the other.
+//
+// Pouring: if everything fits, move it all; otherwise fill the target
+// jug and leave the remainder behind.
+//
+// The state space is finite (6 x 4 = 24 states), so the fixpoint terminates.
+// big_is_4 asks which reachable states have 4 gallons in the big jug.
+//
+// One solution, as (big,small):
+//
+//   (0,0) -fill big-> (5,0) -pour-> (2,3) -empty small-> (2,0)
+//     -pour-> (0,2) -fill big-> (5,2) -pour-> (4,3)   <- done
+//
+// The provenance pragma lets Soufflé's explain mode (souffle -t explain)
+// show the chain of moves that derived a given state.
+
 .pragma "provenance" "explain"
 .decl reach(big : unsigned, small : unsigned)
 reach(0,0).
