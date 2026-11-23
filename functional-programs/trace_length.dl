@@ -1,0 +1,40 @@
+.type L = [hd : symbol, tl : L]
+
+.decl _length(l : L, depth : number) // demand, tagged with call depth
+.decl length(l : L, res : number)    // results
+.decl maxd(d : number)               // deepest call, used to timestamp returns
+.decl trace(step : number, event : symbol, l : L, res : number)
+
+// demand propagation: asking for [hd,tl] demands tl, one level deeper
+_length(tl, d+1) :- _length([_hd, tl], d).
+
+// base case and combine step
+length(nil, 0) :- _length(nil, _).
+length([hd,tl], n+1) :- _length([hd,tl], _), length(tl, n).
+
+// --- tracing ---
+maxd(m) :- m = max d : { _length(_, d) }.
+
+// calls happen on the way down: step = depth
+trace(d, "call", l, 0) :- _length(l, d).
+
+// returns happen on the way back up, in reverse depth order
+trace(2*D - d + 1, "return", l, n) :-
+  length(l, n), _length(l, d), maxd(D).
+
+// the initial call
+_length(["a", ["b", ["c", nil]]], 0).
+
+.output trace(IO=stdout)
+
+// trace
+// ===============
+// 0       call    [a, [b, [c, nil]]]      0
+// 1       call    [b, [c, nil]]   0
+// 2       call    [c, nil]        0
+// 3       call    nil     0
+// 4       return  nil     0
+// 5       return  [c, nil]        1
+// 6       return  [b, [c, nil]]   2
+// 7       return  [a, [b, [c, nil]]]      3
+// ===============
