@@ -1,0 +1,149 @@
+.type type = Unit {} | Arr {a :  type, b : type}
+.type term = TT {} | Lam {b : term} | App {f : term, x : term} | Var {n : number} | Annot {t : term, ty : type}
+.type ctx = [ ty:type, g : ctx]
+
+.decl has(g : ctx, t : term , ty : type)  // bottom up
+.decl infer(g : ctx, t : term)            // mode -+ topdown
+.decl check(g : ctx, t : term, ty : type) // topdown
+
+// variable
+// base case
+has([ty,ctx], $Var(0), ty)  :- infer([ty,ctx], $Var(0)).
+// recursive case
+infer(ctx, $Var(n-1))       :- infer([_ty,ctx], $Var(n)), n > 0.
+has([ty,ctx], $Var(n), ty2) :- infer([ty,ctx], $Var(n)), has(ctx, $Var(n-1), ty2).
+
+// infer instead of check if possible
+infer(ctx,t) :- check(ctx,t,_ty).
+
+// annotation rule
+check(ctx, t, ty) :- infer(ctx, $Annot(t,ty)).
+
+// unit rule
+has(ctx,$TT(), $Unit()) :- check(ctx, $TT(), $Unit()).
+
+// Lam case
+check([a, ctx], body, b)        :- check(ctx, $Lam(body), $Arr(a,b)).
+has(ctx, $Lam(body), $Arr(a,b)) :- check(ctx, $Lam(body), $Arr(a,b)), has([a, ctx], body, b).
+
+// App case.
+infer(ctx, f)          :- infer(ctx, $App(f,_x)).
+check(ctx, x, a)       :- infer(ctx, $App(f,x)), has(ctx, f, $Arr(a,_b)).
+has(ctx, $App(f,x), b) :- infer(ctx, $App(f,x)), has(ctx, f, $Arr(a,b)), has(ctx, x, a).
+
+// ---- Entry point: seed queries ----
+
+// Input table: the (term, type) pairs we WANT to check.
+// These are goals, not facts about what is true.
+.decl check_top(t : term, ty : type)
+
+// Turn each goal into a demand in the empty context (nil, since
+// top-level terms are closed). This starts the top-down search:
+// check(nil,t,ty) triggers the Lam/App/annotation rules above, which
+// generate further check/infer subgoals on subterms and extended contexts.
+check(nil,t,ty):- check_top(t,ty).
+
+// ---- Output side: successful answers ----
+
+// Which top-level terms actually got a type derived?
+// Projects the bottom-up `has` relation onto the empty context.
+.decl has_top(t : term, ty : type)
+has_top(t,ty ):- has(nil, t, ty).
+
+// ---- The seed goals (test cases) ----
+
+// TT : Unit                                  -- succeeds
+check_top($TT(), $Unit()).
+
+// \x. x : Unit -> Unit                       -- succeeds
+check_top($Lam($Var(0)), $Arr($Unit(),$Unit())).
+
+// \x.\y. y  against Unit -> Unit             -- FAILS: body \y.y is
+// checked against Unit, which is not an Arr, so the Lam rule never fires
+check_top($Lam($Lam($Var(0))), $Arr($Unit(),$Unit())).
+
+// \x.\y. y  : Unit -> Unit -> Unit           -- succeeds (var 0 = y)
+check_top($Lam($Lam($Var(0))), $Arr($Unit(),$Arr($Unit(),$Unit()))).
+
+// \x.\y. x  : Unit -> Unit -> Unit           -- succeeds (var 1 = x)
+check_top($Lam($Lam($Var(1))), $Arr($Unit(),$Arr($Unit(),$Unit()))).
+
+// \x.\y. Var(2)                              -- FAILS: only two binders,
+// so index 2 is out of scope (the context list runs out at nil)
+check_top($Lam($Lam($Var(2))), $Arr($Unit(),$Arr($Unit(),$Unit()))).
+
+// (\x. x) TT : Unit                          -- succeeds, but see note below
+check_top($App($Lam($Var(0)), $TT()), $Unit()).
+
+// .decl check(g : ctx, t : term, ty : type) // topdown
+.output check(IO=stdout)
+// ---------------
+// check
+// ===============
+// nil     $TT     $Unit
+// nil     $Lam($Var(0))   $Arr($Unit, $Unit)
+// nil     $Lam($Lam($Var(0)))     $Arr($Unit, $Unit)
+// nil     $Lam($Lam($Var(0)))     $Arr($Unit, $Arr($Unit, $Unit))
+// nil     $Lam($Lam($Var(1)))     $Arr($Unit, $Arr($Unit, $Unit))
+// nil     $Lam($Lam($Var(2)))     $Arr($Unit, $Arr($Unit, $Unit))
+// nil     $App($Lam($Var(0)), $TT)        $Unit
+// [$Unit, nil]    $Var(0) $Unit
+// [$Unit, nil]    $Lam($Var(0))   $Unit
+// [$Unit, nil]    $Lam($Var(0))   $Arr($Unit, $Unit)
+// [$Unit, nil]    $Lam($Var(1))   $Arr($Unit, $Unit)
+// [$Unit, nil]    $Lam($Var(2))   $Arr($Unit, $Unit)
+// [$Unit, [$Unit, nil]]   $Var(0) $Unit
+// [$Unit, [$Unit, nil]]   $Var(1) $Unit
+// [$Unit, [$Unit, nil]]   $Var(2) $Unit
+// ===============
+
+// .decl infer(g : ctx, t : term)            // mode -+ topdown
+.output infer(IO=stdout)
+// ---------------
+// infer
+// ===============
+// nil     $TT
+// nil     $Var(0)
+// nil     $Lam($Var(0))
+// nil     $Lam($Lam($Var(0)))
+// nil     $Lam($Lam($Var(1)))
+// nil     $Lam($Lam($Var(2)))
+// nil     $App($Lam($Var(0)), $TT)
+// [$Unit, nil]    $Var(0)
+// [$Unit, nil]    $Lam($Var(0))
+// [$Unit, nil]    $Var(1)
+// [$Unit, nil]    $Lam($Var(1))
+// [$Unit, nil]    $Lam($Var(2))
+// [$Unit, [$Unit, nil]]   $Var(0)
+// [$Unit, [$Unit, nil]]   $Var(1)
+// [$Unit, [$Unit, nil]]   $Var(2)
+// ===============
+
+// .decl has(g : ctx, t : term , ty : type)  // bottom up
+.output has(IO=stdout)
+// ---------------
+// has
+// ===============
+// nil     $TT     $Unit
+// [$Unit, nil]    $Var(0) $Unit
+// [$Unit, [$Unit, nil]]   $Var(0) $Unit
+// nil     $Lam($Var(0))   $Arr($Unit, $Unit)
+// [$Unit, nil]    $Lam($Var(0))   $Arr($Unit, $Unit)
+// nil     $Lam($Lam($Var(0)))     $Arr($Unit, $Arr($Unit, $Unit))
+// [$Unit, [$Unit, nil]]   $Var(1) $Unit
+// [$Unit, nil]    $Lam($Var(1))   $Arr($Unit, $Unit)
+// nil     $Lam($Lam($Var(1)))     $Arr($Unit, $Arr($Unit, $Unit))
+// nil     $App($Lam($Var(0)), $TT)        $Unit
+// ===============
+
+// .decl has_top(t : term, ty : type)
+.output has_top(IO=stdout)
+// ---------------
+// has_top
+// ===============
+// $TT     $Unit
+// $Lam($Var(0))   $Arr($Unit, $Unit)
+// $Lam($Lam($Var(0)))     $Arr($Unit, $Arr($Unit, $Unit))
+// $Lam($Lam($Var(1)))     $Arr($Unit, $Arr($Unit, $Unit))
+// $App($Lam($Var(0)), $TT)        $Unit
+// ===============
