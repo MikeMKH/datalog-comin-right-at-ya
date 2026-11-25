@@ -1,0 +1,31 @@
+ .type Tree = Leaf {} | Node {t1: Tree, t2: Tree}
+ .decl tree_size_demand(l: Tree)
+ .decl tree_size(t: Tree, res: number)
+ 
+ // populate demands from roots to leaves
+ tree_size_demand(t1) :-
+     tree_size_demand($Node(t1, _t2)).
+ tree_size_demand(t2) :-
+     tree_size_demand($Node(_t1, t2)).
+
+ // calculate bottom-up
+ tree_size($Node(t1, t2), s1 + s2) :-
+     tree_size_demand($Node(t1, t2)),
+     tree_size(t1, s1),
+     tree_size(t2, s2).
+ tree_size($Leaf(), 1).
+ 
+ // compute size for a particular tree
+ tree_size_demand(
+  $Node(
+    $Leaf(),
+    $Node(
+      $Node(
+        $Node($Leaf(), $Leaf()),
+        $Leaf()
+      ),
+      $Leaf()
+    )
+  )
+).
+ .output tree_size(IO=stdout)
